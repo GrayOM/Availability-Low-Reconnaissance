@@ -1,0 +1,15 @@
+# ALR — Availability Low Reconnaissance
+# Python dependencies
+
+# Environment variable loading (.env support)
+python-dotenv>=1.0
+
+# PDF report generation — primary final artifact
+reportlab>=4.0
+
+# GitHub live search (optional — required only for --enable-github-check with live data)
+# PyGithub>=2.0
+
+# Development / testing
+pytest>=8.0
+pytest-cov>=5.0

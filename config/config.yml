@@ -1,0 +1,110 @@
+# ALR — Availability Low Reconnaissance
+# Sample Configuration File
+# Copy this to config.yml and adjust as needed.
+# Most settings can also be overridden via environment variables or CLI flags.
+
+# -----------------------------------------------------------------------
+# Target Defaults
+# -----------------------------------------------------------------------
+defaults:
+  timeout: 60           # per-tool timeout in seconds
+  output_dir: data/outputs
+  verbose: false
+  enable_ai: false
+  enable_github_check: false
+
+# -----------------------------------------------------------------------
+# Tool Paths
+# Override if tools are installed to non-standard paths.
+# Leave as-is if tools are on your $PATH.
+# -----------------------------------------------------------------------
+tools:
+  subfinder:  subfinder
+  dnsx:       dnsx
+  httpx:      httpx
+  naabu:      naabu
+  wappalyzer: wappalyzer
+
+# -----------------------------------------------------------------------
+# Port Scanner Settings (naabu)
+# Low-impact defaults — do NOT increase rate without authorization.
+# -----------------------------------------------------------------------
+port_scan:
+  rate: 100             # packets/sec — keep low to avoid disruption
+  retries: 1
+  ports:
+    - 21    # FTP
+    - 22    # SSH
+    - 23    # Telnet
+    - 25    # SMTP
+    - 53    # DNS
+    - 80    # HTTP
+    - 110   # POP3
+    - 143   # IMAP
+    - 443   # HTTPS
+    - 445   # SMB
+    - 465   # SMTPS
+    - 587   # SMTP Submission
+    - 993   # IMAPS
+    - 995   # POP3S
+    - 1433  # MSSQL
+    - 1521  # Oracle
+    - 3306  # MySQL
+    - 3389  # RDP
+    - 5432  # PostgreSQL
+    - 5900  # VNC
+    - 6379  # Redis
+    - 8080  # HTTP Alt
+    - 8443  # HTTPS Alt
+    - 8888  # Jupyter
+    - 9200  # Elasticsearch
+    - 27017 # MongoDB
+
+# -----------------------------------------------------------------------
+# AI Report Generation
+# -----------------------------------------------------------------------
+ai:
+  model: claude-sonnet-4-20250514
+  max_tokens: 2048
+  # ANTHROPIC_API_KEY must be set in .env or environment
+
+# -----------------------------------------------------------------------
+# GitHub Exposure Check
+# -----------------------------------------------------------------------
+github:
+  # GITHUB_TOKEN must be set in .env or environment for live queries
+  # Without token, module runs as a demonstration stub
+  enabled: false
+  rate_limit_per_minute: 30   # GitHub API authenticated rate limit
+
+# -----------------------------------------------------------------------
+# Surface Analysis Heuristics
+# -----------------------------------------------------------------------
+surface_analysis:
+  sensitive_subdomain_patterns:
+    - admin
+    - login
+    - api
+    - dev
+    - staging
+    - old
+    - test
+    - beta
+    - vpn
+    - git
+    - jenkins
+    - internal
+    - intranet
+    - backup
+    - database
+
+  # Risk levels: high, medium, low, review_recommended
+  port_risk_overrides: {}   # e.g. 22: low
+
+# -----------------------------------------------------------------------
+# Output Settings
+# -----------------------------------------------------------------------
+output:
+  json_filename: output.json
+  markdown_filename: report.md
+  pretty_json: true
