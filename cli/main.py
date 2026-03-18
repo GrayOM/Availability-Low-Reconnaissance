@@ -45,6 +45,19 @@ from reports.pdf_writer import write_pdf_report
 logger = get_logger(__name__)
 
 
+def _sanitize_target(raw: str) -> str:
+    """
+    Produce a safe filesystem name from a target domain or IP.
+    Replaces any character that is not alphanumeric, dot, or hyphen with '_'.
+    Examples:
+      nafal.store        -> nafal.store
+      203.0.113.10       -> 203.0.113.10
+      some weird target  -> some_weird_target
+    """
+    import re
+    return re.sub(r"[^\w.\-]", "_", raw).strip("_") or "target"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="alr",
@@ -182,9 +195,11 @@ def main(argv=None) -> int:
         passive_only=passive_only,
     )
 
-    # PDF export
+    # PDF export — internal run copy + user-facing named copy
     pdf_path = None
+    user_pdf_path = None
     if not args.no_pdf:
+        # Internal copy: data/outputs/<run_id>/report.pdf
         pdf_path = write_pdf_report(
             bundle=bundle,
             surface=surface,
@@ -197,6 +212,15 @@ def main(argv=None) -> int:
             passive_only=passive_only,
             allow_mock=allow_mock,
         )
+        # User-facing copy: reports/<target>.pdf
+        if pdf_path:
+            import shutil
+            _reports_dir = Path(_PROJECT_ROOT) / "output"
+            _reports_dir.mkdir(parents=True, exist_ok=True)
+            _safe_name = _sanitize_target(ctx.raw_input) + ".pdf"
+            user_pdf_path = str(_reports_dir / _safe_name)
+            shutil.copy2(pdf_path, user_pdf_path)
+            logger.info("User-facing PDF: %s", user_pdf_path)
 
     # Summary
     mock_used = any(v == "mock" for v in module_status.values())
@@ -206,10 +230,12 @@ def main(argv=None) -> int:
     logger.info("  Target:       %s", ctx.raw_input)
     logger.info("  Mode:         %s", mode_label)
     logger.info("  Run ID:       %s", ctx.run_id)
-    logger.info("  Output dir:   %s", ctx.output_dir)
+    logger.info("  Artifacts:    %s", ctx.output_dir)
     logger.info("  JSON:         %s", json_path)
     logger.info("  Markdown:     %s", md_path)
-    if pdf_path:
+    if user_pdf_path:
+        logger.info("  PDF (report): %s", user_pdf_path)
+    elif pdf_path:
         logger.info("  PDF:          %s", pdf_path)
     logger.info("  Observations: %d", len(surface.observations))
     logger.info("  Mock used:    %s", mock_used)
