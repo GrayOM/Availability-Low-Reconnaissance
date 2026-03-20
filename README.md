@@ -344,7 +344,7 @@ data/outputs/<run_id>/
 
 ```bash
 git clone https://github.com/GrayOM/Availability-Low-Reconnaissance.git
-cd Availability-Low-Reconnaissance/alr_project/alr
+cd Availability-Low-Reconnaissance
 
 # Python dependencies
 pip install python-dotenv reportlab
