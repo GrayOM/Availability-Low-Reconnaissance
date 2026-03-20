@@ -297,30 +297,54 @@ def write_pdf_report(
     ))
     story.append(spacer(0.1))
 
+    # Modules to exclude from the polished reliability table.
+    # censys is future-optional and not part of the current workflow.
+    # dns and ports are secondary-active tools, skipped in default mode.
+    _HIDE_MODS = {"censys", "dns", "ports"}
+
+    # Human-readable source type labels (replaces raw internal variable names)
+    _SOURCE_LABELS = {
+        "passive":      "Passive",
+        "ct_passive":   "Passive (CT)",
+        "rdap_passive": "Passive (RDAP)",
+        "light_active": "Light Active",
+        "heuristic":    "Heuristic",
+        "mock":         "Mock",
+        "disabled":     "Disabled",
+        "error":        "Unavailable",
+        "skipped":      "Skipped",
+        "empty":        "No data",
+        "ok":           "OK",
+    }
+
     if module_status:
         rel_header = [["Module", "Source Type", "Notes"]]
         source_notes = {
-            "passive":      "Public passive query — no target contact",
-            "ct_passive":   "Certificate Transparency log (public, passive)",
-            "rdap_passive": "RDAP/WHOIS/ASN registry data (public, passive)",
-            "light_active": "Lightweight HTTP probe — minimal footprint",
-            "heuristic":    "Inferred from HTTP metadata (no external call)",
-            "mock":         "MOCK data — not real reconnaissance",
-            "disabled":     "Module disabled for this run",
-            "error":        "Module encountered an error — data absent",
-            "skipped":      "Skipped (not applicable for this target type)",
+            "passive":      "Public passive query — no direct target contact",
+            "ct_passive":   "Certificate Transparency logs (public, passive)",
+            "rdap_passive": "RDAP / WHOIS / ASN registry records (public, passive)",
+            "light_active": "Lightweight HTTP probing — minimal footprint",
+            "heuristic":    "Inferred from HTTP response metadata",
+            "mock":         "Mock data — does not reflect real reconnaissance",
+            "disabled":     "Not active in this run",
+            "error":        "Collection failed or service was unreachable",
+            "skipped":      "Not applicable for this target type",
         }
         rel_rows = rel_header[:]
         for mod, status in sorted(module_status.items()):
+            if mod in _HIDE_MODS:
+                continue
+            label = _SOURCE_LABELS.get(status.lower(), status)
             note = source_notes.get(status.lower(), "")
-            rel_rows.append([mod, status, note])
+            rel_rows.append([mod, label, note])
         rel_ts = [
             ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
             ("BACKGROUND",   (0, 0), (-1, 0), C(*_ACCENT)),
             ("TEXTCOLOR",    (0, 0), (-1, 0), rl_colors.white),
             ("ROWBACKGROUNDS",(0, 1), (-1, -1), [rl_colors.white, C(*_LIGHT_BG)]),
         ]
-        for i, (mod, status) in enumerate(sorted(module_status.items()), start=1):
+        visible = [(m, s) for m, s in sorted(module_status.items()) if m not in _HIDE_MODS]
+        for i, (mod, status) in enumerate(visible, start=1):
             col = _SOURCE_COLORS.get(status.lower(), _DARK)
             rel_ts.append(("TEXTCOLOR", (1, i), (1, i), C(*col)))
         story.append(_tbl(rel_rows, ["25%", "25%", "50%"], rel_ts))
@@ -578,8 +602,8 @@ def write_pdf_report(
         story.append(_tbl(gh_rows, ["45%", "20%", "35%"], gh_ts))
     else:
         story.append(body(
-            "No GitHub public exposure hints were identified or this check was not enabled. "
-            "Use --enable-github-check to include this in future runs."
+            "No GitHub public exposure hints were identified for this target, "
+            "or the GitHub check was not enabled for this run."
         ))
     story.append(spacer(0.2))
 
@@ -589,19 +613,20 @@ def write_pdf_report(
     story += heading1("Limitations & Notes")
 
     limitations = [
-        "This report is based on passive OSINT and lightweight active collection. "
-        "It does not represent a comprehensive security assessment.",
+        "This report is based on passive OSINT and lightweight active data collection. "
+        "It does not constitute a comprehensive security assessment.",
         "Passive collection cannot observe internal systems, authenticated endpoints, "
-        "or assets that do not appear in public data sources.",
-        "Certificate Transparency logs and RDAP data reflect public registry information "
-        "and may lag behind real-world changes by hours or days.",
-        "Subdomain discovery is limited to public resolution and passive databases — "
-        "private or recently provisioned subdomains may not appear.",
-        "All findings are heuristic pattern indicators. None constitute confirmed "
-        "vulnerabilities without further manual investigation.",
-        "This PDF may be uploaded to ChatGPT or another AI assistant for manual "
-        "interpretation of findings. The assistant will not have access to raw "
-        "data beyond what is presented in this report.",
+        "or assets that are not publicly indexed.",
+        "Certificate Transparency logs and RDAP data reflect public registry records "
+        "and may lag behind real-world changes.",
+        "Subdomain discovery relies on public resolution and passive databases. "
+        "Private or recently provisioned subdomains may not be visible.",
+        "All findings are heuristic pattern indicators. "
+        "None constitute confirmed vulnerabilities. "
+        "Manual validation is required before drawing conclusions.",
+        "This PDF may be uploaded to ChatGPT or another AI assistant for further "
+        "interpretation. The assistant will only have access to the content "
+        "presented in this report.",
     ]
     if mock_used:
         limitations.insert(0,
@@ -676,13 +701,21 @@ def write_pdf_report(
 # ---------------------------------------------------------------------------
 
 def _safe_xml(text: str) -> str:
-    """Escape XML special characters for reportlab Paragraph."""
-    text = str(text)
+    """
+    Escape XML special characters and sanitize text for reportlab Paragraph.
+    Handles HTTP titles, observation text, and any user-supplied strings.
+    """
+    text = str(text).strip()
+    # Escape XML special chars
     text = text.replace("&", "&amp;")
     text = text.replace("<", "&lt;")
     text = text.replace(">", "&gt;")
-    # Remove non-ASCII (emoji, etc.) that reportlab can't render with Helvetica
+    # Replace non-printable ASCII control chars
+    text = re.sub(r"[\x00-\x1F\x7F]", " ", text)
+    # Replace non-ASCII (emoji, Unicode, etc.) that Helvetica cannot render
     text = re.sub(r"[^\x20-\x7E]", " ", text)
-    # Convert Markdown bold
+    # Collapse multiple consecutive spaces into one
+    text = re.sub(r"  +", " ", text).strip()
+    # Convert Markdown bold markers to reportlab bold tags
     text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
     return text

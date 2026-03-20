@@ -141,8 +141,8 @@ def _build_structured_report(
         )
     if not review_recommendations:
         review_recommendations.append(
-            "No specific high-priority items were flagged. "
-            "Consider broader active collection for a more complete picture."
+            "No specific high-priority items were identified from the current evidence set. "
+            "Manual review of subdomain and HTTP assets is still advisable."
         )
     review_recommendations.append(
         "This PDF may be uploaded to ChatGPT or another AI assistant "

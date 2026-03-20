@@ -57,12 +57,12 @@ OUTPUT_SCHEMA_KEYS = (
 )
 
 FALLBACK_DISCLAIMER = (
-    "AI analysis was not performed. "
-    "Report uses structured fallback from surface analyzer data only."
+    "This report was generated directly from collected reconnaissance data "
+    "without an external AI processing step."
 )
 
 SPARSE_DATA_NOTE = (
-    "Reconnaissance data is sparse. "
-    "Confidence in all observations is low. "
-    "Additional collection or active scanning may be required."
+    "The current evidence set is limited. "
+    "Confidence in individual observations is low. "
+    "Further collection or manual review may be needed for a more complete picture."
 )

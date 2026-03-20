@@ -152,7 +152,7 @@ class TestSummaryNotes(unittest.TestCase):
         bundle = _make_bundle()
         report = run_surface_analysis(bundle)
         combined = " ".join(report.summary_notes)
-        self.assertIn("DISCLAIMER", combined)
+        self.assertIn("heuristic-based", combined)
 
 
 if __name__ == "__main__":

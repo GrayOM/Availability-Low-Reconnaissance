@@ -511,9 +511,11 @@ class SurfaceAnalyzer:
 
         cat_count = str(len(set(o.category for o in obs)))
         obs_count = str(len(obs))
+        obs_word = "observation" if int(obs_count) == 1 else "observations"
+        cat_word = "category" if int(cat_count) == 1 else "categories"
         notes = [
-            "Total observations: " + obs_count
-            + " across " + cat_count + " categories.",
+            str(obs_count) + " " + obs_word + " identified across "
+            + str(cat_count) + " " + cat_word + ".",
         ]
 
         if highs:
@@ -568,9 +570,8 @@ class SurfaceAnalyzer:
             )
 
         notes.append(
-            "DISCLAIMER: All observations are heuristic-based. "
-            "No confirmed vulnerabilities are asserted. "
-            "Manual validation is required."
+            "All observations are heuristic-based pattern indicators. "
+            "Manual validation is required before drawing any conclusions."
         )
         self.report.summary_notes = notes
 

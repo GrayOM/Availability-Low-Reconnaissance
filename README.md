@@ -126,7 +126,7 @@ data/outputs/<run_id>/
 ```bash
 # 저장소 클론
 git clone https://github.com/GrayOM/Availability-Low-Reconnaissance.git
-cd Availability-Low-Reconnaissance
+cd Availability-Low-Reconnaissance/alr_project/alr
 
 # Python 패키지 설치
 pip install python-dotenv reportlab
@@ -344,7 +344,7 @@ data/outputs/<run_id>/
 
 ```bash
 git clone https://github.com/GrayOM/Availability-Low-Reconnaissance.git
-cd Availability-Low-Reconnaissance
+cd Availability-Low-Reconnaissance/alr_project/alr
 
 # Python dependencies
 pip install python-dotenv reportlab
