@@ -429,28 +429,69 @@ def write_pdf_report(
         ))
         story.append(spacer(0.1))
 
+        # Column widths in points — Paragraph needs absolute widths to wrap correctly.
+        # Usable page width ≈ 470pt (A4 minus 2.2cm margins each side).
+        _TW = 470.6  # total usable width in points
+        _COL_W = [
+            _TW * 0.20,  # Asset       — 20%
+            _TW * 0.15,  # Category    — 15%
+            _TW * 0.11,  # Risk        — 11%
+            _TW * 0.54,  # Observation — 54% (gets the extra space for wrapping)
+        ]
+
+        # ParagraphStyle for table body cells
+        s_cell = ParagraphStyle(
+            "FindCell",
+            parent=base["Normal"],
+            fontSize=8,
+            leading=11,
+            textColor=C(*_DARK),
+            wordWrap="LTR",
+            splitLongWords=True,
+        )
+        s_cell_risk = ParagraphStyle(
+            "FindCellRisk",
+            parent=s_cell,
+            fontName="Helvetica-Bold",
+        )
+
+        # Header row uses plain strings (styled via TableStyle)
         find_header = [["Asset", "Category", "Risk", "Observation"]]
         find_rows = find_header[:]
         find_ts = [
-            ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("BACKGROUND",   (0, 0), (-1, 0), C(*_ACCENT)),
-            ("TEXTCOLOR",    (0, 0), (-1, 0), rl_colors.white),
+            ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+            ("BACKGROUND",    (0, 0), (-1, 0),  C(*_ACCENT)),
+            ("TEXTCOLOR",     (0, 0), (-1, 0),  rl_colors.white),
+            ("FONTSIZE",      (0, 0), (-1, 0),  8),
             ("ROWBACKGROUNDS",(0, 1), (-1, -1), [rl_colors.white, C(*_LIGHT_BG)]),
-            ("FONTSIZE",     (0, 0), (-1, -1), 8),
-            ("WORDWRAP",     (0, 0), (-1, -1), True),
+            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+            ("GRID",          (0, 0), (-1, -1), 0.3, C(*_BORDER)),
         ]
         for i, obs in enumerate(surface.observations, start=1):
             risk_str = obs.risk_hint.upper().replace("_", " ")
-            find_rows.append([
-                obs.asset[:40] + ("…" if len(obs.asset) > 40 else ""),
-                obs.category,
-                risk_str,
-                obs.observation[:120] + ("…" if len(obs.observation) > 120 else ""),
-            ])
             risk_color = _RISK_COLORS.get(obs.risk_hint, _DARK)
-            find_ts.append(("TEXTCOLOR", (2, i), (2, i), C(*risk_color)))
-            find_ts.append(("FONTNAME", (2, i), (2, i), "Helvetica-Bold"))
-        story.append(_tbl(find_rows, ["22%", "16%", "12%", "50%"], find_ts))
+
+            # Build a per-row risk style with the correct colour
+            s_risk_row = ParagraphStyle(
+                "FR" + str(i),
+                parent=s_cell_risk,
+                textColor=C(*risk_color),
+            )
+
+            find_rows.append([
+                Paragraph(_safe_xml(obs.asset),       s_cell),
+                Paragraph(_safe_xml(obs.category),    s_cell),
+                Paragraph(risk_str,                    s_risk_row),
+                Paragraph(_safe_xml(obs.observation), s_cell),
+            ])
+
+        find_tbl = Table(find_rows, colWidths=_COL_W, repeatRows=1)
+        find_tbl.setStyle(TableStyle(find_ts))
+        story.append(find_tbl)
 
         # Recommendations
         story.append(spacer(0.15))
