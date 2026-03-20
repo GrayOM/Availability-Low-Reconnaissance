@@ -137,7 +137,9 @@ def write_pdf_report(
     module_status = module_status or {}
     mock_used     = any(v == "mock" for v in module_status.values())
     timestamp     = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    mode_label    = "Passive-Only" if passive_only else "Passive + Light Active"
+    # passive_only means no secondary active tools (dnsx/naabu).
+    # The standard run always includes httpx (light-active), so it is never truly passive-only.
+    mode_label = "Passive + Light Active" if passive_only else "Passive + Secondary Active"
     out_path      = Path(output_dir) / "report.pdf"
 
     # ----------------------------------------------------------------
@@ -152,7 +154,7 @@ def write_pdf_report(
         bottomMargin=2.4 * cm,
         title="ALR Reconnaissance Report — " + target,
         author="ALR — Availability Low Reconnaissance",
-        subject="Passive reconnaissance findings for " + target,
+        subject="ALR reconnaissance findings for " + target,
     )
 
     # ----------------------------------------------------------------
@@ -264,15 +266,14 @@ def write_pdf_report(
         ))
     elif passive_only:
         story.append(Paragraph(
-            "PASSIVE-ONLY REPORT — No direct probing of the target was performed. "
-            "All findings are derived from public passive sources. "
-            "Data may be incomplete or outdated.",
+            "Passive + Light Active — Passive intelligence combined with lightweight "
+            "HTTP verification (httpx). No port scanning or secondary active tools were used.",
             s_italic,
         ))
     else:
         story.append(Paragraph(
-            "MIXED MODE — Passive intelligence combined with lightweight HTTP verification. "
-            "No aggressive scanning was performed.",
+            "Passive + Secondary Active — Passive intelligence, lightweight HTTP "
+            "verification, and secondary active tools (dnsx/naabu) were used.",
             s_italic,
         ))
     story.append(spacer(0.2))
@@ -396,9 +397,11 @@ def write_pdf_report(
             "additional collection methods would provide more context."
         ))
     else:
+        obs_word = "observation" if obs_count == 1 else "observations"
         story.append(body(
-            str(obs_count) + " heuristic observation(s) were identified. "
-            "All findings are pattern-based and require manual validation."
+            str(obs_count) + " heuristic " + obs_word + " " +
+            ("was" if obs_count == 1 else "were") + " identified. "
+            "All findings are pattern-based indicators and require manual validation."
         ))
         story.append(spacer(0.1))
 
@@ -440,9 +443,9 @@ def write_pdf_report(
 
     if not surface.priority_assets:
         story.append(body(
-            "No high-priority review targets were identified from the current "
-            "evidence set. This does not indicate the target is free of risk — "
-            "it reflects the limits of the current passive evidence."
+            "No high-priority review targets were identified from the current evidence set. "
+            "This does not indicate the absence of risk — it reflects the scope of "
+            "available passive data. Further manual review may be appropriate."
         ))
     else:
         story.append(body(
@@ -508,9 +511,10 @@ def write_pdf_report(
     story += heading1("HTTP Exposure Summary")
 
     if bundle.http and bundle.http.assets:
+        asset_word = "asset" if http_count == 1 else "assets"
         story.append(body(
-            str(http_count) + " HTTP asset(s) were identified. "
-            + str(http_alive) + " responded as reachable."
+            str(http_count) + " HTTP " + asset_word + " were identified. "
+            + str(http_alive) + " responded as reachable during verification."
         ))
         story.append(spacer(0.1))
         http_header = [["URL", "Status", "Title", "Server"]]
@@ -522,10 +526,19 @@ def write_pdf_report(
             ("ROWBACKGROUNDS",(0, 1), (-1, -1), [rl_colors.white, C(*_LIGHT_BG)]),
             ("FONTSIZE",   (0, 0), (-1, -1), 7.5),
         ]
-        for asset in bundle.http.assets[:20]:
-            url_short = asset.url[:45] + ("…" if len(asset.url) > 45 else "")
-            title = (asset.title or "—")[:35] + ("…" if (asset.title or "") and len(asset.title) > 35 else "")
-            server = (asset.server or asset.webserver or "—")[:20]
+        # Deduplicate by URL (keep first occurrence)
+        seen_urls = set()
+        deduped_assets = []
+        for _a in bundle.http.assets:
+            if _a.url not in seen_urls:
+                seen_urls.add(_a.url)
+                deduped_assets.append(_a)
+        for asset in deduped_assets[:20]:
+            url_short = _safe_xml(asset.url[:45] + ("" if len(asset.url) <= 45 else "..."))
+            raw_title = (asset.title or "").strip()
+            title = _safe_xml(raw_title[:35] + ("" if len(raw_title) <= 35 else "...")) if raw_title else "—"
+            raw_server = (asset.server or getattr(asset, "webserver", None) or "").strip()
+            server = _safe_xml(raw_server[:20]) if raw_server else "—"
             status = str(asset.status_code) if asset.status_code else "—"
             http_rows.append([url_short, status, title, server])
         story.append(_tbl(http_rows, ["38%", "10%", "32%", "20%"], http_ts))
@@ -604,20 +617,31 @@ def write_pdf_report(
     # ================================================================
     story += heading1("Appendix — Output References")
 
-    story.append(body("The following output files were generated during this run:"))
     output_dir_path = Path(output_dir)
+    # User-facing PDF location (output/<target>.pdf)
+    import re as _re
+    _safe = _re.sub(r"[^\w.\-]", "_", target).strip("_") or "target"
+    user_pdf = Path(output_dir_path).parent.parent / "output" / (_safe + ".pdf")
+
+    story.append(body("The following output files were generated during this run:"))
     for fname, desc in [
         ("output.json",  "Structured JSON — full normalized data and surface findings"),
         ("report.md",    "Markdown report — human-readable summary of findings"),
-        ("report.pdf",   "This PDF — primary deliverable for review and distribution"),
+        ("report.pdf",   "Internal PDF copy — same content as the user-facing report"),
     ]:
         fpath = output_dir_path / fname
-        exists = "Available" if fpath.exists() else "Not generated"
+        exists = "Available" if fname == "report.pdf" or fpath.exists() else "Not generated"
         story.append(bullet(fname + " — " + desc + " [" + exists + "]"))
+
+    # User-facing PDF
+    user_pdf_exists = "Available" if user_pdf.exists() else "Generated at runtime"
+    story.append(bullet(
+        "output/" + _safe + ".pdf — Primary user-facing PDF report [" + user_pdf_exists + "]"
+    ))
 
     story.append(spacer(0.1))
     story.append(body(
-        "Run ID " + run_id + " — Output directory: " + str(output_dir_path.resolve())
+        "Run ID: " + run_id + "  |  Internal artifacts: " + str(output_dir_path.resolve())
     ))
 
     # ================================================================

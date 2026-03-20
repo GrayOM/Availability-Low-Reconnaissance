@@ -61,27 +61,42 @@ def _build_structured_report(
     sparse     = obs_count < 3
 
     # Executive summary
-    if sparse:
+    cat_count = len(set(o.category for o in surface.observations))
+
+    if obs_count == 0:
         exec_summary = (
             "Passive and lightweight reconnaissance was conducted against "
-            + target + ". The current evidence set is limited — "
-            + str(obs_count) + " surface observation(s) were identified. "
-            "This may indicate a low externally-visible footprint, or that "
-            "additional collection methods would be needed to build a fuller picture. "
-            "All findings are heuristic and require manual validation."
+            + target + ". The collection returned limited externally visible indicators. "
+            "This may reflect a minimal public footprint or a gap in passive data coverage. "
+            "No surface observations were identified from the current evidence set. "
+            "Further manual review or active collection may be warranted."
         )
-    else:
+    elif sparse:
+        obs_word = "observation was" if obs_count == 1 else "observations were"
         exec_summary = (
             "Passive and lightweight reconnaissance was conducted against "
             + target + ". "
-            + str(obs_count) + " surface observation(s) were identified across "
-            + str(len(set(o.category for o in surface.observations))) + " categories. "
-            + (str(high_count) + " observation(s) are flagged for high-priority review. "
-               if high_count else "")
-            + (str(med_count) + " medium-priority observation(s) noted. "
-               if med_count else "")
-            + "All findings are heuristic and require manual validation."
+            + str(obs_count) + " surface " + obs_word + " identified. "
+            "The evidence set is limited and may not fully represent "
+            "non-public or recently changed assets. "
+            "All findings are heuristic and require manual validation."
         )
+    else:
+        cat_word = "category" if cat_count == 1 else "categories"
+        parts = [
+            "Passive and lightweight reconnaissance was conducted against "
+            + target + ". ",
+            str(obs_count) + " surface observations were identified across "
+            + str(cat_count) + " " + cat_word + ". ",
+        ]
+        if high_count:
+            h_word = "observation requires" if high_count == 1 else "observations require"
+            parts.append(str(high_count) + " " + h_word + " high-priority review. ")
+        if med_count:
+            m_word = "medium-priority observation was" if med_count == 1 else "medium-priority observations were"
+            parts.append(str(med_count) + " " + m_word + " noted. ")
+        parts.append("All findings are heuristic and require manual validation.")
+        exec_summary = "".join(parts)
 
     # Key findings — top 10
     key_findings = [
@@ -98,19 +113,40 @@ def _build_structured_report(
     # Analyst notes from surface summary
     analyst_notes = list(surface.summary_notes)
 
-    # Recommendations — no AI API references
-    review_recommendations = [
-        "Review all high-risk surface observations manually.",
-        "Validate subdomain ownership and intended exposure before further assessment.",
-        "Cross-reference CT log hints against known asset inventory.",
-    ]
-    if not passive_only:
+    # Recommendations — context-aware
+    review_recommendations = []
+    if high_count:
         review_recommendations.append(
-            "HTTP assets identified — review each for intended public exposure."
+            "Manually review all high-risk observations before drawing conclusions."
+        )
+    if surface.priority_assets:
+        review_recommendations.append(
+            "Validate ownership and intended exposure of each priority asset."
+        )
+    ct = getattr(bundle, "ct", None)
+    ct_hints = getattr(ct, "subdomain_hints", []) if ct else []
+    if ct_hints:
+        review_recommendations.append(
+            "Cross-reference Certificate Transparency hints against your known asset inventory."
+        )
+    rdap_local = getattr(bundle, "rdap", None)
+    expiry = getattr(rdap_local, "expiry_date", "") if rdap_local else ""
+    if expiry:
+        review_recommendations.append(
+            "Confirm domain registration renewal is planned to avoid unintended expiry."
+        )
+    if bundle.http and bundle.http.assets:
+        review_recommendations.append(
+            "Review each reachable HTTP asset for intended public exposure and access controls."
+        )
+    if not review_recommendations:
+        review_recommendations.append(
+            "No specific high-priority items were flagged. "
+            "Consider broader active collection for a more complete picture."
         )
     review_recommendations.append(
-        "For deeper interpretation, this PDF report can be uploaded to ChatGPT "
-        "or another AI assistant for manual analysis."
+        "This PDF may be uploaded to ChatGPT or another AI assistant "
+        "for further manual interpretation."
     )
 
     # Reliability notes
