@@ -1,0 +1,36 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime output
+data/outputs/
+output/
+outputs/
+*.log
+*.tmp
+
+# Generated reports and scan artifacts
+reports/*.pdf
+*.sqlite
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local tools and agent workspaces
+.tools/
+.agents/
+.codex/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
