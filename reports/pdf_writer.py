@@ -9,7 +9,7 @@ the normalized data collected during the ALR pipeline.
 The PDF is the primary final artifact. It is:
   - readable without any additional tooling
   - structured for professional review
-  - suitable for manual upload to ChatGPT for interpretation
+  - suitable for manual review and handoff
   - conservative in language (no confirmed vulnerability claims)
 
 Sections:
@@ -32,6 +32,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Optional
 
 from utils.logger import get_logger
@@ -84,13 +85,13 @@ _DISCLAIMER = (
 # ---------------------------------------------------------------------------
 
 def write_pdf_report(
-    bundle,
-    surface,
-    ai_report,
-    md_path: str,
-    output_dir: str,
-    target: str,
-    run_id: str,
+    bundle=None,
+    surface=None,
+    ai_report=None,
+    md_path: str = "",
+    output_dir: str = ".",
+    target: str = "target",
+    run_id: str = "",
     module_status: dict = None,
     passive_only: bool = True,
     allow_mock: bool = False,
@@ -134,6 +135,21 @@ def write_pdf_report(
         )
         return None
 
+    bundle = bundle or SimpleNamespace(
+        subdomains=None,
+        http=None,
+        ports=None,
+        github=None,
+    )
+    surface = surface or SimpleNamespace(
+        observations=[],
+        priority_assets=[],
+    )
+    ai_report = ai_report or SimpleNamespace(
+        executive_summary="Reconnaissance report generated from available data.",
+        review_recommendations=[],
+        priority_assets=[],
+    )
     module_status = module_status or {}
     mock_used     = any(v == "mock" for v in module_status.values())
     timestamp     = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -665,9 +681,8 @@ def write_pdf_report(
         "All findings are heuristic pattern indicators. "
         "None constitute confirmed vulnerabilities. "
         "Manual validation is required before drawing conclusions.",
-        "This PDF may be uploaded to ChatGPT or another AI assistant for further "
-        "interpretation. The assistant will only have access to the content "
-        "presented in this report.",
+        "Use this report as a review aid only. Confirm ownership, exposure, "
+        "and business context before taking action.",
     ]
     if mock_used:
         limitations.insert(0,

@@ -61,12 +61,12 @@ port_scan:
     - 27017 # MongoDB
 
 # -----------------------------------------------------------------------
-# AI Report Generation
+# Structured Report Generation
 # -----------------------------------------------------------------------
 ai:
-  model: claude-sonnet-4-20250514
+  model: structured-report
   max_tokens: 2048
-  # ANTHROPIC_API_KEY must be set in .env or environment
+  # No external API key is required for the default workflow.
 
 # -----------------------------------------------------------------------
 # GitHub Exposure Check

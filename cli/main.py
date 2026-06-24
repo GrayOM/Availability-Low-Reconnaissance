@@ -71,7 +71,6 @@ def build_parser() -> argparse.ArgumentParser:
 Examples:
   python3 -m cli.main --doctor
   python3 -m cli.main --domain example.com
-  python3 -m cli.main --domain example.com --enable-ai
   python3 -m cli.main --domain example.com --enable-github-check
   python3 -m cli.main --domain example.com --enable-secondary-active
   python3 -m cli.main --domain example.com --allow-mock

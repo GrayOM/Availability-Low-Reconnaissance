@@ -4,12 +4,11 @@ ai/report_generator.py
 Structured reconnaissance report generator.
 
 ARCHITECTURE NOTE (v8+):
-  The active AI API path has been removed from the default workflow.
+  The external API path has been removed from the default workflow.
   ALR now generates a structured report directly from surface analysis data.
-  The PDF is the primary final artifact — users can upload it to ChatGPT
-  or another assistant for manual interpretation if desired.
+  The PDF is the primary final artifact for manual review and handoff.
 
-  No OPENAI_API_KEY, no ANTHROPIC_API_KEY, no external API billing required.
+  No external API key or external API billing is required.
 
 The _fallback_report() function now IS the report generator.
 It produces a clean, structured AIReport from surface analysis data.
@@ -34,7 +33,7 @@ def generate_ai_report(
     """
     Generate a structured reconnaissance report from surface analysis data.
 
-    No external AI API is called. The report is derived entirely from
+    No external API is called. The report is derived entirely from
     the normalized data collected during the ALR pipeline.
 
     Returns an AIReport suitable for JSON, Markdown, and PDF export.
@@ -145,8 +144,7 @@ def _build_structured_report(
             "Manual review of subdomain and HTTP assets is still advisable."
         )
     review_recommendations.append(
-        "This PDF may be uploaded to ChatGPT or another AI assistant "
-        "for further manual interpretation."
+        "Use the report as a review aid and confirm each observation manually."
     )
 
     # Reliability notes

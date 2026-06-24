@@ -89,7 +89,7 @@ class Settings:
         default_factory=lambda: int(os.getenv("ALR_TIMEOUT", "60"))
     )
 
-    # ---- OpenAI AI layer (optional — requires --enable-ai flag) ----
+    # ---- Legacy report settings (kept for backward compatibility) ----
     openai_api_key: str = field(
         default_factory=lambda: os.getenv("OPENAI_API_KEY", "")
     )
